@@ -358,6 +358,21 @@ class KukdiReasoning:
         coverage = prep_context.get("coverage") or {}
         missing = coverage.get("missing") or []
         thin = coverage.get("thin") or []
+        gap_matches = coverage.get("gap_matches") or {}
+
+        # Strength matchmaking: the top gap (missing before thin) that has a
+        # matching circle member. Computed deterministically so the named peer
+        # and the structured refs always agree — never an invented peer.
+        primary_match = None
+        for comp in (missing + [t for t in thin if t not in missing]):
+            peers = gap_matches.get(comp) or []
+            if peers:
+                primary_match = {
+                    "competency": comp,
+                    "best_fit": peers[0],
+                    "alternates": peers[1:3],
+                }
+                break
 
         # Nothing real to reason about — stay silent rather than inventing a nudge.
         if not circle and not unacted and not events:
@@ -427,9 +442,30 @@ class KukdiReasoning:
                 "detail": (n.get("detail") or "").strip(),
                 "refs": refs,
             })
-            if len(out) >= 3:
+            if len(out) >= 4:
                 break
-        return out
+
+        # Strength matchmaking (deterministic, grounded): when a gap has a matching
+        # circle member, ensure ONE mock-suggestion nudge that names the best-fit
+        # peer and carries structured `match` refs (best_fit + up to 2 alternates).
+        # Placed first so it leads the default Dream Offer view. If there is no
+        # match, behaviour is unchanged (this whole block is skipped).
+        if primary_match:
+            bf = primary_match["best_fit"]
+            comp = primary_match["competency"]
+            out = [n for n in out if n["kind"] != "mock-suggestion"]
+            out.insert(0, {
+                "id": f"mock-suggestion:{new_id()}",
+                "kind": "mock-suggestion",
+                "line": f"Maybe a mock with {bf['name']} on {comp} — they're strong there.",
+                "detail": "",
+                "refs": [
+                    {"kind": "person", "label": bf["name"]},
+                    {"kind": "competency", "label": comp},
+                ],
+                "match": primary_match,
+            })
+        return out[:3]
 
 
 reasoning = KukdiReasoning()

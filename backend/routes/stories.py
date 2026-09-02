@@ -5,6 +5,7 @@ mapped to the companies it's been used for.
 from fastapi import APIRouter, HTTPException
 
 from ai_engine import reasoning
+from context import match_peers_for_gaps
 from database import db
 from models import (INTERVIEW_COMPETENCIES, MarkUsedIn, StoryIn, StoryMatchIn,
                     StoryUpdate, new_id, now_iso)
@@ -54,7 +55,24 @@ async def coverage():
                 seen.add(comp)
     missing = [c for c in INTERVIEW_COMPETENCIES if counts[c] == 0]
     thin = [c for c in INTERVIEW_COMPETENCIES if counts[c] == 1]
-    return {"competencies": INTERVIEW_COMPETENCIES, "counts": counts, "missing": missing, "thin": thin}
+
+    # Strength matchmaking (computed on read; nothing stored): for each gap,
+    # the best-fit prep-circle member plus up to 2 alternates, or null/empty.
+    circle = await db.people.find({"prep_group": True}, {"_id": 0}).to_list(100)
+    circle_people = [
+        {"id": p["id"], "name": p.get("name", ""), "strengths": p.get("strengths", []) or []}
+        for p in circle
+    ]
+    gap_matches = match_peers_for_gaps(missing + thin, circle_people)
+    suggestions = {}
+    for comp in (missing + thin):
+        peers = gap_matches.get(comp) or []
+        suggestions[comp] = {
+            "suggested_peer": peers[0] if peers else None,
+            "alternate_peers": peers[1:3],
+        }
+    return {"competencies": INTERVIEW_COMPETENCIES, "counts": counts,
+            "missing": missing, "thin": thin, "suggestions": suggestions}
 
 
 @router.get("")

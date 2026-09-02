@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, RefreshCw } from "lucide-react";
 import { api } from "../lib/api";
 import { Modal, Field, inputClass, PrimaryButton } from "../components/Modal";
+import MockModal from "../components/MockModal";
 
 const STAGES = ["researching", "networking", "applied", "interviewing", "offer", "closed"];
 const CATEGORY_LABELS = {
@@ -32,6 +33,7 @@ export default function DreamOffer() {
   const [moreNudges, setMoreNudges] = useState([]);
   const [nudgeLoading, setNudgeLoading] = useState(true);
   const [showMore, setShowMore] = useState(false);
+  const [mockFor, setMockFor] = useState(null); // { person, competency }
 
   const load = () => api.dreamOverview().then(setData);
   const loadCountdown = () => api.countdown().then((d) => setCountdown(d.countdown));
@@ -123,6 +125,20 @@ export default function DreamOffer() {
               <p className="font-editorial text-2xl md:text-[26px] italic text-[#5C605A] leading-snug" data-testid="dream-nudge">
                 {nudge.line}
               </p>
+              {nudge.match?.best_fit && (
+                <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 group/match">
+                  <span className="text-sm text-[#8A8F8C]" data-testid="nudge-match-peer">
+                    {nudge.match.best_fit.name} is strong here
+                  </span>
+                  <button
+                    onClick={() => setMockFor({ person: { id: nudge.match.best_fit.person_id, name: nudge.match.best_fit.name }, competency: nudge.match.competency })}
+                    data-testid={`nudge-log-mock-${nudge.match.best_fit.person_id}`}
+                    className="text-xs tracking-[0.12em] uppercase text-[#9DB0A3] opacity-0 group-hover/match:opacity-100 focus:opacity-100 hover:text-[#5C605A] transition-all duration-500"
+                  >
+                    log a mock with {nudge.match.best_fit.name}
+                  </button>
+                </div>
+              )}
               {nudge.refs?.length > 0 && (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-500">
                   {nudge.refs.map((r, i) => {
@@ -144,7 +160,7 @@ export default function DreamOffer() {
                   })}
                 </div>
               )}
-              {(nudge.detail || moreNudges.length > 0) && (
+              {(nudge.detail || moreNudges.length > 0 || nudge.match?.alternates?.length > 0) && (
                 <button
                   onClick={() => setShowMore((v) => !v)}
                   data-testid="dream-nudge-see-more"
@@ -164,6 +180,24 @@ export default function DreamOffer() {
                     data-testid="dream-nudge-more-list"
                   >
                     <div className="mt-5 space-y-5 border-l border-[#E2DFD8] pl-6">
+                      {nudge.match?.alternates?.length > 0 && (
+                        <div className="space-y-2.5">
+                          {nudge.match.alternates.map((alt) => (
+                            <div key={alt.person_id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                              <span className="text-[#5C605A]" data-testid={`nudge-alternate-peer-${alt.person_id}`}>
+                                {alt.name} is strong here too
+                              </span>
+                              <button
+                                onClick={() => setMockFor({ person: { id: alt.person_id, name: alt.name }, competency: nudge.match.competency })}
+                                data-testid={`nudge-log-mock-${alt.person_id}`}
+                                className="text-xs tracking-[0.12em] uppercase text-[#9DB0A3] hover:text-[#5C605A] transition-colors"
+                              >
+                                log a mock with {alt.name}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {nudge.detail && <p className="text-[#5C605A] leading-relaxed">{nudge.detail}</p>}
                       {moreNudges.map((n) => (
                         <div key={n.id}>
@@ -370,6 +404,13 @@ export default function DreamOffer() {
         </Field>
         <PrimaryButton onClick={addPrep} data-testid="prep-save-btn">Add</PrimaryButton>
       </Modal>
+
+      <MockModal
+        person={mockFor?.person || null}
+        presetCompetencies={mockFor?.competency ? [mockFor.competency] : []}
+        onClose={() => setMockFor(null)}
+        onSaved={() => { setMockFor(null); api.dreamNudges().then((d) => { setNudge(d.nudge || null); setMoreNudges(d.more || []); }).catch(() => {}); }}
+      />
     </div>
   );
 }

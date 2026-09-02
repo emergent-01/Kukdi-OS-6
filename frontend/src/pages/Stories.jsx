@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Sparkles, Wand2, ArrowUpRight } from "lucide-react";
 import { api } from "../lib/api";
 import { Modal, Field, inputClass, PrimaryButton } from "../components/Modal";
+import MockModal from "../components/MockModal";
 
 const EMPTY = { title: "", situation: "", task: "", action: "", result: "", themes: [], tags: ["star"] };
 const STAR = [
@@ -26,6 +27,8 @@ export default function Stories() {
   const [markCompany, setMarkCompany] = useState("");
   const [markRound, setMarkRound] = useState("");
   const [marking, setMarking] = useState(false);
+  const [mockFor, setMockFor] = useState(null); // { person, competency }
+  const [covSeeMore, setCovSeeMore] = useState({}); // competency -> bool
 
   const load = () => api.stories().then((d) => setStories(d.stories || []));
   const loadCoverage = () => api.storyCoverage().then(setCoverage).catch(() => {});
@@ -117,6 +120,62 @@ export default function Stories() {
               Only one · {coverage.thin.join(" · ")}
             </p>
           )}
+          {[...(coverage.missing || []), ...(coverage.thin || [])]
+            .filter((c) => coverage.suggestions?.[c]?.suggested_peer)
+            .map((c) => {
+              const sug = coverage.suggestions[c];
+              const peer = sug.suggested_peer;
+              const alts = sug.alternate_peers || [];
+              return (
+                <div key={c} className="pt-2.5" data-testid={`coverage-suggested-peer-${c}`}>
+                  <p className="text-[#5C605A] leading-relaxed">
+                    <span className="text-[#2C2D2B]">{peer.name}</span> is strong at {c} — maybe practise this with them.{" "}
+                    <button
+                      onClick={() => setMockFor({ person: { id: peer.person_id, name: peer.name }, competency: c })}
+                      data-testid={`coverage-log-mock-${peer.person_id}`}
+                      className="text-xs tracking-[0.12em] uppercase text-[#9DB0A3] hover:text-[#5C605A] transition-colors"
+                    >
+                      log a mock
+                    </button>
+                  </p>
+                  {alts.length > 0 && (
+                    <button
+                      onClick={() => setCovSeeMore((m) => ({ ...m, [c]: !m[c] }))}
+                      data-testid={`coverage-see-more-${c}`}
+                      className="mt-1.5 text-xs tracking-[0.15em] uppercase text-[#8A8F8C] hover:text-[#2C2D2B] transition-colors"
+                    >
+                      {covSeeMore[c] ? "Less" : "See more"}
+                    </button>
+                  )}
+                  <AnimatePresence>
+                    {covSeeMore[c] && alts.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-2 space-y-1.5 border-l border-[#E2DFD8] pl-4">
+                          {alts.map((alt) => (
+                            <p key={alt.person_id} className="text-[#5C605A]" data-testid={`coverage-alternate-peer-${alt.person_id}`}>
+                              <span className="text-[#2C2D2B]">{alt.name}</span> is strong here too.{" "}
+                              <button
+                                onClick={() => setMockFor({ person: { id: alt.person_id, name: alt.name }, competency: c })}
+                                data-testid={`coverage-log-mock-${alt.person_id}`}
+                                className="text-xs tracking-[0.12em] uppercase text-[#9DB0A3] hover:text-[#5C605A] transition-colors"
+                              >
+                                log a mock
+                              </button>
+                            </p>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
         </div>
       )}
 
@@ -197,7 +256,7 @@ export default function Stories() {
 
             {active.feedback && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-[#EFECE7] rounded-2xl px-5 py-4 mb-6" data-testid="story-feedback">
-                <span className="text-[10px] tracking-[0.15em] uppercase text-[#9DB0A3]">Kukdi's note</span>
+                <span className="text-[10px] tracking-[0.15em] uppercase text-[#9DB0A3]">Kukdi’s note</span>
                 <p className="text-[#5C605A] mt-1 italic font-editorial text-lg leading-snug">{active.feedback}</p>
               </motion.div>
             )}
@@ -263,6 +322,13 @@ export default function Stories() {
         <Field label="Themes (comma separated)"><input className={inputClass} value={Array.isArray(form.themes) ? form.themes.join(", ") : form.themes} onChange={(e) => setForm({ ...form, themes: e.target.value })} data-testid="story-add-themes" placeholder="leadership, conflict, impact" /></Field>
         <PrimaryButton onClick={add} data-testid="story-add-save">Add story</PrimaryButton>
       </Modal>
+
+      <MockModal
+        person={mockFor?.person || null}
+        presetCompetencies={mockFor?.competency ? [mockFor.competency] : []}
+        onClose={() => setMockFor(null)}
+        onSaved={() => setMockFor(null)}
+      />
     </div>
   );
 }

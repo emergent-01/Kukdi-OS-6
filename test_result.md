@@ -220,10 +220,54 @@ frontend:
         -agent: "testing"
         -comment: "✅ TESTED & WORKING. Verified: (1) home-nudge-doorway appears on Home page when a nudge exists. (2) Displays as single quiet line with Kukdi-voice text ('Maybe when you have a quiet moment, revisiting Amol's note...'). (3) Not loud or competing with other elements. (4) Clicking doorway successfully navigates to /dream-offer page. (5) Doorway only appears when nudge exists (conditional rendering working). All doorway functionality working as designed."
 
+frontend:
+  - task: "Dream Offer strength matchmaking nudge with one-tap actions"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/DreamOffer.jsx, frontend/src/components/MockModal.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Nudge displays best-fit match peer (Rasukh) with hover one-tap action opening MockModal pre-filled with Leadership. See-more reveals alternates (Devina) with their own one-tap actions. Collapsed view hides alternates."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL TESTS PASSED. Verified: (1) Nudge loads within 30s showing warm offer-phrased line 'Maybe a mock with Rasukh on Leadership — they're strong there'. (2) Collapsed view shows nudge-match-peer 'Rasukh is strong here' with hover one-tap button nudge-log-mock-32bcb5e4-87bb-4acc-9d29-7d9fda3421b1. (3) Alternate peer (Devina) NOT visible in collapsed view (correct). (4) Clicking one-tap opens mock-modal with title 'A mock with Rasukh' and Leadership competency chip PRE-SELECTED (highlighted in sage). (5) Clicking dream-nudge-see-more reveals dream-nudge-more-list with alternate peer nudge-alternate-peer-03aa9e83-693a-4839-8000-99b1ac8a3fda 'Devina is strong here too' now visible. (6) Alternate has own one-tap nudge-log-mock-03aa9e83-693a-4839-8000-99b1ac8a3fda opening modal pre-filled with Leadership. (7) Modal save/close works correctly. Screenshots confirm visual design matches calm editorial style. No console errors."
+  - task: "Stories coverage matchmaking with suggested peers"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Stories.jsx, frontend/src/components/MockModal.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Coverage area shows suggested_peer for each thin/missing competency with one-tap action. See-more reveals alternates. Pre-fills MockModal with competency."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL TESTS PASSED. Verified: (1) coverage-suggested-peer-Leadership displays 'Rasukh is strong at Leadership — maybe practise this with them' with one-tap button coverage-log-mock-32bcb5e4-87bb-4acc-9d29-7d9fda3421b1. (2) Clicking one-tap opens mock-modal with Leadership chip PRE-SELECTED (highlighted). (3) coverage-suggested-peer-Influence displays 'Devina is strong at Influence — maybe practise this with them'. (4) coverage-see-more-Leadership button found and clicked successfully. (5) After see-more, coverage-alternate-peer-03aa9e83-693a-4839-8000-99b1ac8a3fda 'Devina is strong here too' becomes visible with own one-tap coverage-log-mock-03aa9e83-693a-4839-8000-99b1ac8a3fda. (6) Alternate NOT visible before see-more (correct collapsed behavior). Screenshots confirm proper layout and pre-filled modal. No console errors."
+  - task: "Shared MockModal reuse across People/DreamOffer/Stories"
+    implemented: true
+    working: true
+    file: "frontend/src/components/MockModal.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "MockModal extracted to shared component. Accepts person + presetCompetencies props. People flow unchanged (no preset). DreamOffer/Stories pass preset competencies for pre-selection."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ REGRESSION TEST PASSED. Verified People mock flow still works correctly with shared MockModal: (1) Expanded person detail (person-expand-{id}) shows practice log. (2) Clicked mock-log-open-{id} opens mock-modal with title 'A mock with Devina'. (3) Selected Conflict competency chip - chip highlights correctly. (4) Filled mock-feedback 'Excellent conflict resolution practice'. (5) Clicked mock-save - modal closes successfully. (6) Mock appears in person's practice log after save. (7) No behavior change from original People implementation - all testids and functionality preserved. Screenshots confirm modal works identically across all three pages (People, DreamOffer, Stories). No console errors."
+
 metadata:
   created_by: "main_agent"
-  version: "1.2"
-  test_sequence: 1
+  version: "1.3"
+  test_sequence: 2
   run_ui: false
 
 test_plan:
@@ -234,8 +278,10 @@ test_plan:
 
 agent_communication:
     -agent: "main"
-    -message: "Backend additive prep layer complete. Please test ONLY the new endpoints: (1) PATCH /api/people/{id} with body {prep_group, strengths:[...from INTERVIEW_COMPETENCIES], strength_note} persists and returns updated doc WITHOUT _id; setting prep_group:false also works. (2) /api/mocks: POST create (person_ids link to a real person id), GET /?person_id= filters to sessions containing that id newest-first, PATCH toggling acted:true works, DELETE works — all responses must have NO _id. (3) GET /api/dream/nudges returns {nudge:{id,kind,line,detail,refs}|null, more:[...]}; with the 3 existing circle members (Devina, Rasukh, Shubhi) it should return a non-null grounded nudge (offer-phrased, references only real people/competencies), and no _id anywhere. DB currently: 12 people (3 with prep_group=true), 14 companies. Do NOT test unrelated existing endpoints. Use MONGO via REACT_APP_BACKEND_URL external base."
+    -message: "STRENGTH MATCHMAKING (additive). Backend verified via curl: GET /api/stories/coverage returns suggestions{competency:{suggested_peer,alternate_peers}} (Leadership→best-fit Rasukh + alt Devina; Influence→Devina; Failure→null); GET /api/dream/nudges top nudge is mock-suggestion naming Rasukh on Leadership with match{best_fit,alternates:[Devina]}; no _id leaks. Shared components/MockModal.jsx now reused by People/DreamOffer/Stories (People testids+behaviour unchanged). TEST SCOPE ONLY: (1) /dream-offer — wait up to ~30s for nudge; default shows dream-nudge + nudge-match-peer (Rasukh) + hover one-tap nudge-log-mock-{rasukhId} opening mock-modal PRE-FILLED with mock-competency-chip-Leadership selected; alternates (Devina) appear ONLY after dream-nudge-see-more (nudge-alternate-peer-{devinaId} + nudge-log-mock-{devinaId}); collapsed view must NOT show alternates. (2) /stories coverage — coverage-suggested-peer-Leadership shows Rasukh + coverage-log-mock-{rasukhId} (opens mock-modal pre-filled Leadership); see-more reveals coverage-alternate-peer-{devinaId}; coverage-suggested-peer-Influence shows Devina. (3) People /people mock flow unchanged (mock-log-open-{id}→mock-modal→mock-save). Smoke-check other pages. NOTE: example strengths set on Rasukh(Leadership)/Devina(Leadership,Influence) for verification; will be cleared after."
     -agent: "testing"
     -message: "✅ BACKEND TESTING COMPLETE - ALL 28 TESTS PASSED. All three backend tasks are working correctly: (1) People PATCH/POST with prep_group, strengths, strength_note - all operations work, toggle on/off confirmed, unknown strengths kept gracefully, no _id leaks. (2) Mock sessions CRUD - POST/GET/PATCH/DELETE all working, person_id filtering correct (array-contains), newest-first ordering confirmed, no _id leaks. (3) Dream nudges - LLM integration working, returns grounded nudges with real person/competency refs, proper structure {nudge, more}, no _id leaks. No critical issues found. Backend prep-circle feature is production-ready."
     -agent: "testing"
     -message: "✅ FRONTEND TESTING COMPLETE - ALL 5 UI FLOWS PASSED + SMOKE TESTS PASSED. Comprehensive testing of prep-circle UI flows completed successfully: (A) People PREP CIRCLE grouping - confirmed members (Devina, Rasukh, Shubhi) correctly grouped, 'EVERYONE ELSE' section separates non-circle members, add/remove toggle works and persists after reload, no numeric badges. (B) Strengths editing - modal opens, chips selectable with sage highlighting, note field works, all data displays in person row and persists after reload. (C) Mock session logging - expand person detail works, modal opens with all fields (date, competencies, feedback, to_act_on), mocks display as prose newest-first, unacted items show as muted whisper, mark-acted button appears on hover and successfully marks items as 'Acted on'. (D) Dream Offer nudge - displays ONE warm offer-phrased line with calm italic styling (no loud card/banner), see-more reveals additional content and collapses correctly, LLM-generated nudge is grounded with real refs. (E) Home doorway - single quiet line appears when nudge exists, navigates to /dream-offer on click. (F) Smoke tests - all pages (/memory, /calendar, /knowledge, /reflection, /stories, /more, /talk, /intake) load without crashes or console errors. NO CRITICAL ISSUES FOUND. Prep-circle feature is production-ready."
+    -agent: "testing"
+    -message: "✅ STRENGTH MATCHMAKING TESTING COMPLETE - ALL 3 NEW FEATURES PASSED + SMOKE TESTS PASSED. Comprehensive UI testing completed: (A) Dream Offer matchmaking - nudge loads correctly with warm offer-phrased line, best-fit peer (Rasukh) visible in collapsed view with hover one-tap action, clicking one-tap opens MockModal PRE-FILLED with Leadership chip selected, see-more reveals alternate peer (Devina) with own one-tap action, collapsed view correctly hides alternates. (B) Stories coverage matchmaking - Leadership coverage shows Rasukh as suggested peer with one-tap action opening pre-filled modal, Influence coverage shows Devina, see-more reveals alternate peer (Devina for Leadership) with own one-tap, collapsed state correctly hides alternates. (C) Shared MockModal reuse - People mock flow regression passed, modal works identically across all three pages (People/DreamOffer/Stories), all testids preserved, competency pre-selection works correctly, no behavior changes to existing People flow. (D) Smoke tests - all 8 pages (Home, Memory, Calendar, Knowledge, Reflection, More, Talk, Intake) load without errors. NO CONSOLE ERRORS detected across all tests. Screenshots confirm calm editorial styling, proper chip highlighting, and correct collapsed/expanded states. All strength matchmaking features are production-ready."

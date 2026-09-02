@@ -11,6 +11,18 @@ from database import db
 from models import INTERVIEW_COMPETENCIES
 
 
+def match_peers_for_gaps(gaps, circle_people):
+    """Map each gap competency -> ordered list of matching prep-circle members
+    [{person_id, name}]. Best-fit first: specialists (fewer total strengths) lead,
+    then alphabetical. Pure function — no DB, no fabrication."""
+    mapping = {}
+    for comp in gaps:
+        matches = [p for p in circle_people if comp in (p.get("strengths") or [])]
+        matches.sort(key=lambda p: (len(p.get("strengths") or []), p.get("name", "")))
+        mapping[comp] = [{"person_id": p["id"], "name": p.get("name", "")} for p in matches]
+    return mapping
+
+
 async def build_context() -> dict:
     memories = await db.memories.find(
         {"status": "active"}, {"_id": 0}
@@ -70,6 +82,9 @@ async def build_prep_context() -> dict:
         for p in circle
     ]
 
+    # Strength matchmaking: gap competency -> matching circle members (best-fit first)
+    gap_matches = match_peers_for_gaps(missing + thin, circle_people)
+
     # --- Recent mock sessions (newest first); resolve who from person ids ---
     all_people = await db.people.find({}, {"_id": 0}).to_list(500)
     name_by_id = {p["id"]: p.get("name", "") for p in all_people}
@@ -103,7 +118,7 @@ async def build_prep_context() -> dict:
     ]
 
     return {
-        "coverage": {"missing": missing, "thin": thin, "counts": counts},
+        "coverage": {"missing": missing, "thin": thin, "counts": counts, "gap_matches": gap_matches},
         "circle_people": circle_people,
         "recent_mocks": recent_mocks,
         "unacted_mocks": unacted_mocks,

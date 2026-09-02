@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Check } from "lucide-react";
 import { api, formatDay } from "../lib/api";
 import { Modal, Field, inputClass, PrimaryButton } from "../components/Modal";
+import MockModal from "../components/MockModal";
 
 const COMPETENCIES = [
   "Leadership", "Ambiguity", "Failure", "Conflict", "Influence",
@@ -45,8 +46,6 @@ export default function People() {
   const [strengthsDraft, setStrengthsDraft] = useState({ strengths: [], note: "" });
 
   const [mockFor, setMockFor] = useState(null); // person
-  const emptyMock = { date: new Date().toISOString().slice(0, 10), competencies: [], company: "", feedback: "", what_went_well: "", to_act_on: "" };
-  const [mockDraft, setMockDraft] = useState(emptyMock);
 
   const load = () => api.people().then((d) => setPeople(d.people || []));
   useEffect(() => { load(); }, []);
@@ -94,32 +93,7 @@ export default function People() {
     load();
   };
 
-  const openMock = (p) => {
-    setMockDraft(emptyMock);
-    setMockFor(p);
-  };
-  const toggleMockComp = (c) => {
-    setMockDraft((d) => ({
-      ...d,
-      competencies: d.competencies.includes(c) ? d.competencies.filter((x) => x !== c) : [...d.competencies, c],
-    }));
-  };
-  const saveMock = async () => {
-    const payload = {
-      person_ids: [mockFor.id],
-      date: mockDraft.date ? new Date(mockDraft.date).toISOString() : undefined,
-      competencies: mockDraft.competencies,
-      company: mockDraft.company || null,
-      feedback: mockDraft.feedback || null,
-      what_went_well: mockDraft.what_went_well || null,
-      to_act_on: mockDraft.to_act_on || null,
-    };
-    await api.createMock(payload);
-    const pid = mockFor.id;
-    setMockFor(null);
-    setExpandedId(pid);
-    loadMocks(pid);
-  };
+  const openMock = (p) => setMockFor(p);
 
   const markActed = async (mockId, personId) => {
     await api.updateMock(mockId, { acted: true });
@@ -335,44 +309,12 @@ export default function People() {
         <PrimaryButton onClick={saveStrengths} data-testid="person-strengths-save">Save</PrimaryButton>
       </Modal>
 
-      {/* Log a mock */}
-      <Modal open={!!mockFor} onClose={() => setMockFor(null)} title={mockFor ? `A mock with ${mockFor.name}` : ""} testId="mock-modal">
-        <Field label="When">
-          <input
-            type="date"
-            className={inputClass}
-            value={mockDraft.date}
-            onChange={(e) => setMockDraft({ ...mockDraft, date: e.target.value })}
-            data-testid="mock-date"
-          />
-        </Field>
-        <Field label="What you practised">
-          <div className="flex flex-wrap gap-2">
-            {COMPETENCIES.map((c) => (
-              <Chip
-                key={c}
-                label={c}
-                selected={mockDraft.competencies.includes(c)}
-                onClick={() => toggleMockComp(c)}
-                testId={`mock-competency-chip-${c}`}
-              />
-            ))}
-          </div>
-        </Field>
-        <Field label="For a company (optional)">
-          <input className={inputClass} value={mockDraft.company} onChange={(e) => setMockDraft({ ...mockDraft, company: e.target.value })} data-testid="mock-company" />
-        </Field>
-        <Field label="Feedback">
-          <textarea className={inputClass} rows={2} value={mockDraft.feedback} onChange={(e) => setMockDraft({ ...mockDraft, feedback: e.target.value })} data-testid="mock-feedback" />
-        </Field>
-        <Field label="What went well (optional)">
-          <input className={inputClass} value={mockDraft.what_went_well} onChange={(e) => setMockDraft({ ...mockDraft, what_went_well: e.target.value })} data-testid="mock-what-went-well" />
-        </Field>
-        <Field label="To act on (optional)">
-          <input className={inputClass} value={mockDraft.to_act_on} onChange={(e) => setMockDraft({ ...mockDraft, to_act_on: e.target.value })} data-testid="mock-to-act-on" />
-        </Field>
-        <PrimaryButton onClick={saveMock} data-testid="mock-save">Save</PrimaryButton>
-      </Modal>
+      {/* Log a mock — shared modal */}
+      <MockModal
+        person={mockFor}
+        onClose={() => setMockFor(null)}
+        onSaved={(pid) => { setExpandedId(pid); loadMocks(pid); }}
+      />
     </div>
   );
 }
