@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, RefreshCw } from "lucide-react";
 import { api } from "../lib/api";
 import { Modal, Field, inputClass, PrimaryButton } from "../components/Modal";
@@ -27,9 +28,21 @@ export default function DreamOffer() {
   const [newCompany, setNewCompany] = useState({ name: "", tier: "target", role: "Product Manager", stage: "researching", next_action: "" });
   const [newPrep, setNewPrep] = useState({ category: "roadmap", title: "", content: "" });
 
+  const [nudge, setNudge] = useState(null);
+  const [moreNudges, setMoreNudges] = useState([]);
+  const [nudgeLoading, setNudgeLoading] = useState(true);
+  const [showMore, setShowMore] = useState(false);
+
   const load = () => api.dreamOverview().then(setData);
   const loadCountdown = () => api.countdown().then((d) => setCountdown(d.countdown));
-  useEffect(() => { load(); loadCountdown(); }, []);
+  useEffect(() => {
+    load();
+    loadCountdown();
+    api.dreamNudges()
+      .then((d) => { setNudge(d.nudge || null); setMoreNudges(d.more || []); })
+      .catch(() => {})
+      .finally(() => setNudgeLoading(false));
+  }, []);
 
   const generateCountdown = async () => {
     setGenerating(true);
@@ -96,6 +109,76 @@ export default function DreamOffer() {
           />
         </div>
       </div>
+
+      {/* A gentle nudge — one quiet, offer-phrased line; nothing when empty */}
+      {(nudgeLoading || nudge) && (
+        <section className="mb-16 max-w-2xl" data-testid="dream-nudge-section">
+          <h2 className="text-xs tracking-[0.18em] uppercase text-[#8A8F8C] mb-4">A gentle nudge</h2>
+          {nudgeLoading && !nudge ? (
+            <p className="font-editorial text-xl italic text-[#8A8F8C]" data-testid="dream-nudge-loading">
+              Kukdi is noticing…
+            </p>
+          ) : (
+            <div>
+              <p className="font-editorial text-2xl md:text-[26px] italic text-[#5C605A] leading-snug" data-testid="dream-nudge">
+                {nudge.line}
+              </p>
+              {nudge.refs?.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-500">
+                  {nudge.refs.map((r, i) => {
+                    const to = r.kind === "person" ? "/people" : r.kind === "event" ? "/calendar" : null;
+                    return to ? (
+                      <Link
+                        key={`${r.label}-${i}`}
+                        to={to}
+                        data-testid={`dream-nudge-ref-${i}`}
+                        className="text-xs tracking-[0.15em] uppercase text-[#8A8F8C] hover:text-[#2C2D2B] transition-colors"
+                      >
+                        {r.label}
+                      </Link>
+                    ) : (
+                      <span key={`${r.label}-${i}`} className="text-xs tracking-[0.15em] uppercase text-[#8A8F8C]">
+                        {r.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              {(nudge.detail || moreNudges.length > 0) && (
+                <button
+                  onClick={() => setShowMore((v) => !v)}
+                  data-testid="dream-nudge-see-more"
+                  className="mt-4 text-xs tracking-[0.15em] uppercase text-[#8A8F8C] hover:text-[#2C2D2B] transition-colors"
+                >
+                  {showMore ? "Less" : "See more"}
+                </button>
+              )}
+              <AnimatePresence>
+                {showMore && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                    className="overflow-hidden"
+                    data-testid="dream-nudge-more-list"
+                  >
+                    <div className="mt-5 space-y-5 border-l border-[#E2DFD8] pl-6">
+                      {nudge.detail && <p className="text-[#5C605A] leading-relaxed">{nudge.detail}</p>}
+                      {moreNudges.map((n) => (
+                        <div key={n.id}>
+                          <p className="font-editorial text-xl italic text-[#5C605A] leading-snug">{n.line}</p>
+                          {n.detail && <p className="text-sm text-[#8A8F8C] mt-1.5 leading-relaxed">{n.detail}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Interview Countdown */}
       <section className="mb-20" data-testid="countdown-section">

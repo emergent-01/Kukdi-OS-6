@@ -50,6 +50,7 @@ export const api = {
   generateCountdown: (body = {}) => http.post("/dream/countdown/generate", body).then((r) => r.data),
   toggleCountdownTask: (taskId, done) =>
     http.patch(`/dream/countdown/task/${taskId}`, { done }).then((r) => r.data),
+  dreamNudges: () => http.get("/dream/nudges").then((r) => r.data),
 
   // People
   people: () => http.get("/people").then((r) => r.data),
@@ -57,6 +58,13 @@ export const api = {
   createPerson: (body) => http.post("/people", body).then((r) => r.data),
   updatePerson: (id, body) => http.patch(`/people/${id}`, body).then((r) => r.data),
   deletePerson: (id) => http.delete(`/people/${id}`).then((r) => r.data),
+
+  // Mock interview sessions (prep circle)
+  listMocks: (personId) =>
+    http.get("/mocks", { params: personId ? { person_id: personId } : {} }).then((r) => r.data),
+  createMock: (payload) => http.post("/mocks", payload).then((r) => r.data),
+  updateMock: (id, patch) => http.patch(`/mocks/${id}`, patch).then((r) => r.data),
+  deleteMock: (id) => http.delete(`/mocks/${id}`).then((r) => r.data),
 
   // Calendar
   events: () => http.get("/calendar").then((r) => r.data),

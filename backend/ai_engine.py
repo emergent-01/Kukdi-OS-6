@@ -348,4 +348,88 @@ class KukdiReasoning:
             return []
 
 
+    async def prep_nudges(self, prep_context: Dict) -> List[Dict]:
+        """Surface at most a few gentle prep nudges from real prep-circle data.
+        Grounded strictly in the given context — never fabricates a person, mock,
+        piece of feedback, or event. Returns [] on empty inputs or any failure."""
+        circle = prep_context.get("circle_people") or []
+        unacted = prep_context.get("unacted_mocks") or []
+        events = prep_context.get("interview_events") or []
+        coverage = prep_context.get("coverage") or {}
+        missing = coverage.get("missing") or []
+        thin = coverage.get("thin") or []
+
+        # Nothing real to reason about — stay silent rather than inventing a nudge.
+        if not circle and not unacted and not events:
+            return []
+
+        people_block = "\n".join(
+            f'  - {p.get("name","")}: strong at '
+            f'{", ".join(p.get("strengths", [])) or "unspecified"}'
+            + (f' — note: {p["strength_note"]}' if p.get("strength_note") else "")
+            for p in circle
+        ) or "  (none yet)"
+        mocks_block = "\n".join(
+            f'  - {", ".join(m.get("who", [])) or "a mock"} on '
+            f'{(m.get("date") or "")[:10]}: still to act on — "{m.get("to_act_on","")}"'
+            for m in unacted
+        ) or "  (none)"
+        events_block = "\n".join(
+            f'  - {e.get("title","")} ({e.get("type","")}) on {(e.get("start") or "")[:10]}'
+            for e in events
+        ) or "  (none)"
+
+        system = (
+            f"{_PERSONA}\n\n"
+            "You quietly notice how Little Miss's interview preparation is going and, "
+            "only when there is something genuinely useful, offer a gentle idea. "
+            "Everything you say must be grounded ONLY in the data below — never invent "
+            "a person, a mock session, a piece of feedback, or an event.\n\n"
+            f"Her prep circle (people she practises with):\n{people_block}\n\n"
+            f"Competency coverage gaps (from her Story Bank) — missing: "
+            f"{', '.join(missing) or 'none'}; thin: {', '.join(thin) or 'none'}.\n\n"
+            f"Mock-session feedback she hasn't acted on yet:\n{mocks_block}\n\n"
+            f"Upcoming interview-type dates:\n{events_block}\n\n"
+            "Produce at most three nudges, best first. Each nudge is a single warm "
+            "sentence in your voice, phrased as a soft offer with 'maybe' — never a "
+            "command, never 'you're behind'. Choose from these kinds: 'mock-suggestion' "
+            "(pair a coverage gap with a circle member whose strength fits, suggesting a "
+            "mock), 'feedback-followup' (gently revisit an unacted piece of mock "
+            "feedback), 'interview-proximity' (an upcoming interview paired with a "
+            "relevant person or focus). Only use names, competencies and events that "
+            "appear above. Return ONLY JSON: "
+            '{"nudges":[{"kind":"...","line":"one gentle sentence",'
+            '"detail":"optional short reflection or empty",'
+            '"refs":[{"kind":"person|competency|event","label":"exact name/competency/event"}]}]}. '
+            'If nothing is genuinely worth surfacing, return {"nudges":[]}.'
+        )
+        chat = self._chat(system, f"kukdi-prep-{new_id()}")
+        try:
+            raw = await chat.send_message(UserMessage(text="Surface her prep nudges now."))
+            data = _parse_json(raw)
+        except Exception:
+            return []
+        out = []
+        for n in (data.get("nudges") or []):
+            line = (n.get("line") or "").strip()
+            if not line:
+                continue
+            kind = (n.get("kind") or "mock-suggestion").strip()
+            refs = []
+            for r in (n.get("refs") or []):
+                label = (r.get("label") or "").strip()
+                if label:
+                    refs.append({"kind": (r.get("kind") or "").strip(), "label": label})
+            out.append({
+                "id": f"{kind}:{new_id()}",
+                "kind": kind,
+                "line": line,
+                "detail": (n.get("detail") or "").strip(),
+                "refs": refs,
+            })
+            if len(out) >= 3:
+                break
+        return out
+
+
 reasoning = KukdiReasoning()

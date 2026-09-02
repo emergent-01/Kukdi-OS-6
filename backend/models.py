@@ -137,6 +137,9 @@ class PersonIn(BaseModel):
     notes: str = ""
     important: List[str] = Field(default_factory=list)
     tags: List[str] = Field(default_factory=list)
+    prep_group: bool = False
+    strengths: List[str] = Field(default_factory=list)
+    strength_note: str = ""
 
 
 class PersonUpdate(BaseModel):
@@ -147,6 +150,11 @@ class PersonUpdate(BaseModel):
     notes: Optional[str] = None
     important: Optional[List[str]] = None
     tags: Optional[List[str]] = None
+    prep_group: Optional[bool] = None
+    # Loosely validated against INTERVIEW_COMPETENCIES in the route — unknown
+    # values are kept gracefully rather than rejected.
+    strengths: Optional[List[str]] = None
+    strength_note: Optional[str] = None
 
 
 class EventIn(BaseModel):
@@ -231,6 +239,30 @@ class StoryMatchIn(BaseModel):
 class MarkUsedIn(BaseModel):
     company: str
     round: Optional[str] = None
+
+
+# ----- Mock interview sessions (prep circle) ---------------------------------
+
+class MockSessionIn(BaseModel):
+    person_ids: List[str] = Field(default_factory=list)
+    date: str = Field(default_factory=now_iso)
+    competencies: List[str] = Field(default_factory=list)  # from INTERVIEW_COMPETENCIES
+    company: Optional[str] = None
+    feedback: Optional[str] = None
+    what_went_well: Optional[str] = None
+    to_act_on: Optional[str] = None
+    acted: bool = False
+
+
+class MockSessionUpdate(BaseModel):
+    person_ids: Optional[List[str]] = None
+    date: Optional[str] = None
+    competencies: Optional[List[str]] = None
+    company: Optional[str] = None
+    feedback: Optional[str] = None
+    what_went_well: Optional[str] = None
+    to_act_on: Optional[str] = None
+    acted: Optional[bool] = None
 
 
 # ----- Day One Intake --------------------------------------------------------

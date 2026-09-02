@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException
 
 from ai_engine import reasoning
-from context import build_context
+from context import build_context, build_prep_context
 from database import db
 from models import (COMPANY_STAGES, CompanyIn, CompanyUpdate, CountdownGenerateIn,
                     PrepItemIn, PrepItemUpdate, TaskToggleIn, new_id, now_iso)
@@ -40,6 +40,17 @@ async def overview():
         "stage_counts": stage_counts,
         "counts": {"companies": len(companies), "prep_done": done, "prep_total": total},
     }
+
+
+@router.get("/nudges")
+async def prep_nudges():
+    """One gentle prep nudge computed live from the prep circle, coverage gaps,
+    unacted mock feedback and upcoming interviews. Nothing stored; empty → null."""
+    prep_ctx = await build_prep_context()
+    nudges = await reasoning.prep_nudges(prep_ctx)
+    if not nudges:
+        return {"nudge": None, "more": []}
+    return {"nudge": nudges[0], "more": nudges[1:]}
 
 
 @router.post("/companies")

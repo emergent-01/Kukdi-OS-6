@@ -7,7 +7,7 @@ from database import client, db
 from seed import seed, provision_real_data
 from storage import init_storage
 from routes import (calendar, conversation, dream, home, intake, knowledge,
-                    memory, people, reflection, reminders, stories)
+                    memory, mocks, people, reflection, reminders, stories)
 
 app = FastAPI(title="Kukdi — A Personal Operating System")
 
@@ -36,6 +36,7 @@ app.include_router(reflection.router, prefix="/api/reflection", tags=["reflectio
 app.include_router(reminders.router, prefix="/api/reminders", tags=["reminders"])
 app.include_router(stories.router, prefix="/api/stories", tags=["stories"])
 app.include_router(intake.router, prefix="/api/intake", tags=["intake"])
+app.include_router(mocks.router, prefix="/api/mocks", tags=["mocks"])
 
 app.add_middleware(
     CORSMiddleware,

@@ -21,6 +21,7 @@ export default function Home() {
   const [brief, setBrief] = useState(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [reminders, setReminders] = useState([]);
+  const [nudge, setNudge] = useState(null);
   const navigate = useNavigate();
 
   const load = () => api.home().then(setData).catch(() => {});
@@ -28,6 +29,7 @@ export default function Home() {
     load();
     api.brief().then((d) => setBrief(d.brief)).catch(() => {});
     api.reminders().then((d) => setReminders(d.reminders || [])).catch(() => {});
+    api.dreamNudges().then((d) => setNudge(d.nudge || null)).catch(() => {});
   }, []);
 
   const dismissReminder = async (id) => {
@@ -128,7 +130,7 @@ export default function Home() {
       {(brief || briefLoading) && (
         <motion.section {...fade} className="mt-12 max-w-2xl group" data-testid="home-brief">
           <div className="flex items-center gap-3 mb-3">
-            <h2 className="text-xs tracking-[0.18em] uppercase text-[#8A8F8C]">Today's brief</h2>
+            <h2 className="text-xs tracking-[0.18em] uppercase text-[#8A8F8C]">Today’s brief</h2>
             <button
               onClick={refreshBrief}
               data-testid="brief-refresh"
@@ -185,6 +187,21 @@ export default function Home() {
             ))}
           </div>
         </motion.section>
+      )}
+
+      {/* Dream Offer doorway — one quiet, Kukdi-voice line, only when a nudge exists */}
+      {nudge && (
+        <motion.button
+          {...fade}
+          onClick={() => navigate("/dream-offer")}
+          data-testid="home-nudge-doorway"
+          className="mt-16 max-w-2xl flex items-start gap-2 text-left group"
+        >
+          <span className="font-editorial text-xl md:text-2xl italic text-[#5C605A] leading-snug group-hover:text-[#2C2D2B] transition-colors">
+            {nudge.line}
+          </span>
+          <ArrowUpRight size={18} strokeWidth={1.5} className="text-[#8A8F8C] shrink-0 mt-1.5 group-hover:text-[#2C2D2B] transition-colors" />
+        </motion.button>
       )}
 
       {/* Focus */}
